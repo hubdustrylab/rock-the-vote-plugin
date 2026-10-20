@@ -1,0 +1,9 @@
+{
+  "name": "rtv-native-smoke",
+  "main": "dev.hubdustry.rtv.smoke.RtvNativeSmokeProbe",
+  "version": "1",
+  "minGameVersion": "160",
+  "dependencies": ["rock-the-vote"],
+  "hidden": true,
+  "java": true
+}

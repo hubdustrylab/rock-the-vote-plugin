@@ -1,0 +1,25 @@
+name: Build
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mindustry: [v160, v160.7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: bash ./gradlew build smokeJar -PmindustryVersion=${{ matrix.mindustry }}
+      - run: python3 tools/smoke-test.py --version ${{ matrix.mindustry }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rock-the-vote-${{ matrix.mindustry }}
+          path: build/libs/*.jar

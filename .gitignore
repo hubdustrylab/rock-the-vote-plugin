@@ -1,0 +1,8 @@
+.gradle/
+build/
+bin/
+.idea/
+*.iml
+config/
+__pycache__/
+*.py[cod]

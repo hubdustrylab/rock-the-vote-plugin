@@ -1,0 +1,10 @@
+{
+  "name": "rock-the-vote",
+  "displayName": "Rock the Vote",
+  "author": "Hubdustry",
+  "main": "dev.hubdustry.rtv.RockTheVotePlugin",
+  "description": "Vote to change the map. Includes server panels and language files.",
+  "version": "${version}",
+  "minGameVersion": "160",
+  "java": true
+}

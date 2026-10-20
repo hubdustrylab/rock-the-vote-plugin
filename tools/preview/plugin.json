@@ -1,0 +1,10 @@
+{
+  "name": "rtv-preview-server",
+  "displayName": "RTV Preview Server Helper",
+  "author": "Hubdustry",
+  "main": "dev.hubdustry.rtv.preview.PreviewServerPlugin",
+  "version": "1.0.0",
+  "minGameVersion": "160",
+  "dependencies": ["rock-the-vote"],
+  "java": true
+}

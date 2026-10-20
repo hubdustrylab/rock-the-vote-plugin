@@ -1,0 +1,105 @@
+import java.security.MessageDigest
+
+plugins {
+    id 'java'
+}
+
+group = 'dev.hubdustry'
+version = providers.gradleProperty('pluginVersion').get()
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+def engineVersion = providers.gradleProperty('mindustryVersion').get()
+def engineHashes = [
+    'v160': 'c3e5f934f237d2383febe4ad4ea05d895aabe45a75e1181d0b4363c94f1c41d9',
+    'v160.7': 'f7b899a4038b95b14a824d5f8993984f79d73baa3254c385b6538327f9c0befd'
+]
+if (!engineHashes.containsKey(engineVersion)) {
+    throw new GradleException("Add a verified release hash before you use ${engineVersion}.")
+}
+def engineJar = layout.buildDirectory.file("dependencies/mindustry-${engineVersion}.jar")
+
+// Use the official server distribution. Do not package engine classes in the plugin.
+tasks.register('prepareMindustry') {
+    outputs.file(engineJar)
+    outputs.upToDateWhen { false }
+    doLast {
+        def target = engineJar.get().asFile
+        if (!target.exists()) {
+            target.parentFile.mkdirs()
+            def pending = new File(target.path + '.part')
+            try {
+                new URI("https://github.com/Anuken/Mindustry/releases/download/${engineVersion}/server-release.jar")
+                    .toURL().withInputStream { input -> pending.withOutputStream { it << input } }
+                java.nio.file.Files.move(pending.toPath(), target.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            } finally {
+                pending.delete()
+            }
+        }
+        def digest = MessageDigest.getInstance('SHA-256')
+        target.withInputStream { input ->
+            byte[] buffer = new byte[65536]
+            int count
+            while ((count = input.read(buffer)) != -1) digest.update(buffer, 0, count)
+        }
+        if (digest.digest().encodeHex().toString() != engineHashes[engineVersion]) {
+            throw new GradleException("SHA-256 mismatch: ${target}. Remove this file and try again.")
+        }
+    }
+}
+
+dependencies {
+    compileOnly files(engineJar)
+    testImplementation files(engineJar)
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+sourceSets {
+    smoke {
+        java.srcDir 'src/smoke/java'
+        compileClasspath += sourceSets.main.output + files(engineJar)
+        runtimeClasspath += compileClasspath
+    }
+}
+
+tasks.register('smokeJar', Jar) {
+    dependsOn tasks.named('smokeClasses')
+    archiveFileName = 'rtv-native-smoke.jar'
+    destinationDirectory = layout.buildDirectory.dir('smoke-probe')
+    from sourceSets.smoke.output
+}
+
+tasks.withType(JavaCompile).configureEach {
+    dependsOn tasks.named('prepareMindustry')
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+test {
+    useJUnitPlatform()
+    maxParallelForks = 1
+    systemProperty 'java.awt.headless', 'true'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('plugin.json') {
+        expand(version: project.version)
+    }
+}
+
+jar {
+    archiveFileName = "rock-the-vote-${project.version}.jar"
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
