@@ -3,6 +3,6 @@ build/
 bin/
 .idea/
 *.iml
-config/
+/config/
 __pycache__/
 *.py[cod]
