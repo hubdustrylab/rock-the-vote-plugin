@@ -61,35 +61,20 @@ To change the project identity, update these locations:
 
 ## Tests
 
-Run the unit tests and build the local server probe:
+Build the plugin and run the unit tests:
 
 ```sh
-bash ./gradlew build smokeJar
-python tools/smoke-test.py --version v160.7
+bash ./gradlew build
 ```
 
 Run the same checks against the minimum engine version:
 
 ```sh
-bash ./gradlew build smokeJar -PmindustryVersion=v160
-python tools/smoke-test.py --version v160
+bash ./gradlew build -PmindustryVersion=v160
 ```
 
 On Windows, replace `bash ./gradlew` with `./gradlew.bat`.
-The server probe requires Python 3.10 or later.
-It uses simulated players to test commands, configuration reload, and a native map transition.
-Logs are in `build/smoke/`. Unit reports are in `build/reports/tests/test/`.
+Unit reports are in `build/reports/tests/test/`.
 
 For panel changes, also test search, scrolling, images, and voting on desktop and mobile clients.
 For map transitions, test with connected multiplayer clients.
-
-Capture the panels with the native desktop client:
-
-```sh
-python tools/preview/run-preview.py
-```
-
-Use `--portrait` or `--narrow` to test smaller viewports.
-Use `--all-viewports` to check all six viewport layouts.
-Use `--resize-test` to check live layout changes and preserve a search draft.
-Use `--map-count 1000` to test a large catalog with temporary map copies.

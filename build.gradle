@@ -64,21 +64,6 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-sourceSets {
-    smoke {
-        java.srcDir 'src/smoke/java'
-        compileClasspath += sourceSets.main.output + files(engineJar)
-        runtimeClasspath += compileClasspath
-    }
-}
-
-tasks.register('smokeJar', Jar) {
-    dependsOn tasks.named('smokeClasses')
-    archiveFileName = 'rtv-native-smoke.jar'
-    destinationDirectory = layout.buildDirectory.dir('smoke-probe')
-    from sourceSets.smoke.output
-}
-
 tasks.withType(JavaCompile).configureEach {
     dependsOn tasks.named('prepareMindustry')
     options.encoding = 'UTF-8'
