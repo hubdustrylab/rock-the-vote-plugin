@@ -8,9 +8,7 @@ Supports multilingual messages, custom PNG images, and configurable vote rules.
 
 ## Preview
 
-![Map selection](docs/images/map-selection.png)
-
-![Map vote](docs/images/map-vote.png)
+![Rock the Vote workflow](docs/images/workflow.gif)
 
 ## Build
 
