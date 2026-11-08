@@ -1,0 +1,35 @@
+plugins {
+    id 'java-library'
+}
+
+group = rootProject.group
+version = rootProject.version
+
+repositories {
+    mavenCentral()
+}
+
+def engine = files(rootProject.tasks.named('prepareMindustry'))
+dependencies {
+    // The public hooks take engine types. The server supplies those classes at runtime.
+    compileOnlyApi engine
+    testImplementation engine
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    maxParallelForks = 1
+    systemProperty 'java.awt.headless', 'true'
+}
+
+jar {
+    from(rootProject.file('LICENSE')) {
+        into 'META-INF'
+        rename { 'rock-the-vote-LICENSE.txt' }
+    }
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

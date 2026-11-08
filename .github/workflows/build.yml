@@ -1,0 +1,44 @@
+name: Build
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mindustry: [v160, v160.7]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - run: bash ./gradlew build -PmindustryVersion=${{ matrix.mindustry }}
+      - run: bash ./gradlew -p examples/embedded build -PmindustryVersion=${{ matrix.mindustry }}
+      - name: Start the embedded example on a clean server
+        env:
+          MINDUSTRY_VERSION: ${{ matrix.mindustry }}
+        run: |
+          set -euo pipefail
+          smoke=$(mktemp -d)
+          mkdir -p "$smoke/config/mods"
+          cp examples/embedded/build/libs/server-with-map-vote.jar "$smoke/config/mods/"
+          (
+            cd "$smoke"
+            timeout 30s java -jar "$GITHUB_WORKSPACE/build/dependencies/mindustry-$MINDUSTRY_VERSION.jar" \
+              'example-status,mapvote status,exit'
+          ) | tee "$smoke/startup.log"
+          grep -Fq 'The example server plugin is loaded.' "$smoke/startup.log"
+          grep -Fq 'Status: idle' "$smoke/startup.log"
+          test -f "$smoke/config/mods/server-with-map-vote/map-voting/config.properties"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rock-the-vote-${{ matrix.mindustry }}
+          path: build/libs/*.jar
+          if-no-files-found: error

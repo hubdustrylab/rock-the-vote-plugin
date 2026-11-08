@@ -1,0 +1,10 @@
+{
+  "name": "server-with-map-vote",
+  "displayName": "Server with Map Vote",
+  "author": "Hubdustry",
+  "main": "example.server.ExampleServerPlugin",
+  "description": "Example host plugin with an embedded map vote.",
+  "version": "1.0.0",
+  "minGameVersion": "160",
+  "java": true
+}

@@ -1,0 +1,3 @@
+rootProject.name = 'server-with-map-vote'
+
+includeBuild('../..')

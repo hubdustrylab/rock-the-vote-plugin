@@ -1,0 +1,4 @@
+rootProject.name = 'rock-the-vote-plugin'
+
+include 'rock-the-vote-runtime'
+project(':rock-the-vote-runtime').projectDir = file('runtime')

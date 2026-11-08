@@ -1,0 +1,126 @@
+import groovy.json.JsonOutput
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+
+plugins {
+    id 'java'
+}
+
+group = 'dev.hubdustry'
+version = providers.gradleProperty('pluginVersion').get()
+
+allprojects {
+    plugins.withId('java') {
+        java {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+    }
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.release = 17
+    }
+}
+
+def engineVersion = providers.gradleProperty('mindustryVersion').get()
+def engineHashes = [
+    'v160': 'c3e5f934f237d2383febe4ad4ea05d895aabe45a75e1181d0b4363c94f1c41d9',
+    'v160.7': 'f7b899a4038b95b14a824d5f8993984f79d73baa3254c385b6538327f9c0befd'
+]
+if (!engineHashes.containsKey(engineVersion)) {
+    throw new GradleException("Add a verified release hash before you use ${engineVersion}.")
+}
+def engineJar = layout.buildDirectory.file("dependencies/mindustry-${engineVersion}.jar")
+
+def verifyEngine = { File file ->
+    def digest = MessageDigest.getInstance('SHA-256')
+    file.withInputStream { input ->
+        byte[] buffer = new byte[65536]
+        int count
+        while ((count = input.read(buffer)) != -1) digest.update(buffer, 0, count)
+    }
+    if (digest.digest().encodeHex().toString() != engineHashes[engineVersion]) {
+        throw new GradleException("SHA-256 mismatch: ${file}. Remove any cached copy and try again.")
+    }
+}
+
+// Use the official server distribution. Do not package engine classes in the plugin.
+tasks.register('prepareMindustry') {
+    outputs.file(engineJar)
+    outputs.upToDateWhen { false }
+    doLast {
+        def target = engineJar.get().asFile
+        if (target.exists()) {
+            verifyEngine(target)
+            return
+        }
+
+        Files.createDirectories(target.parentFile.toPath())
+        def pending = Files.createTempFile(target.parentFile.toPath(), 'mindustry-', '.part')
+        try {
+            def connection = new URI("https://github.com/Anuken/Mindustry/releases/download/${engineVersion}/server-release.jar")
+                .toURL().openConnection()
+            connection.connectTimeout = 15000
+            connection.readTimeout = 30000
+            connection.inputStream.withCloseable { input ->
+                pending.toFile().withOutputStream { output -> output << input }
+            }
+            verifyEngine(pending.toFile())
+            Files.move(pending, target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            Files.deleteIfExists(pending)
+        }
+    }
+}
+
+dependencies {
+    implementation project(':rock-the-vote-runtime')
+}
+
+def pluginId = providers.gradleProperty('pluginId').get()
+def pluginCommand = providers.gradleProperty('pluginCommand').get()
+if (!(pluginId ==~ /[a-z][a-z0-9-]{0,47}/)) {
+    throw new GradleException('pluginId must be a lowercase slug of up to 48 characters.')
+}
+if (!(pluginCommand ==~ /[a-z][a-z0-9-]{0,31}/)) {
+    throw new GradleException('pluginCommand must be a lowercase command name of up to 32 characters.')
+}
+
+def metadata = [
+    name: pluginId,
+    displayName: providers.gradleProperty('pluginDisplayName').get(),
+    author: providers.gradleProperty('pluginAuthor').get(),
+    description: providers.gradleProperty('pluginDescription').get(),
+    main: 'dev.hubdustry.rtv.RockTheVotePlugin',
+    version: version.toString(),
+    minGameVersion: '160',
+    java: true
+]
+if ([metadata.displayName, metadata.author, metadata.description, metadata.version].any { it.isBlank() }) {
+    throw new GradleException('Plugin display name, author, description, and version are required.')
+}
+def metadataDirectory = layout.buildDirectory.dir('generated/standalone-resources')
+def generatePluginMetadata = tasks.register('generatePluginMetadata') {
+    inputs.properties(metadata + [command: pluginCommand])
+    outputs.dir(metadataDirectory)
+    doLast {
+        def directory = metadataDirectory.get().asFile
+        def identity = new File(directory, 'rtv/standalone.json')
+        identity.parentFile.mkdirs()
+        new File(directory, 'plugin.json').setText(JsonOutput.prettyPrint(JsonOutput.toJson(metadata)) + '\n', 'UTF-8')
+        identity.setText(JsonOutput.toJson([command: pluginCommand, displayName: metadata.displayName]) + '\n', 'UTF-8')
+    }
+}
+sourceSets.main.resources.srcDir(generatePluginMetadata)
+
+jar {
+    archiveBaseName = pluginId
+    dependsOn configurations.runtimeClasspath
+    from({ configurations.runtimeClasspath.collect { zipTree(it) } }) {
+        exclude 'META-INF/MANIFEST.MF'
+    }
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
